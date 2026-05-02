@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { PromptItem } from '../types';
+import Tag from './Tag.vue';
 
 interface Props {
   item: PromptItem;
