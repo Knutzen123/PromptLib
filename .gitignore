@@ -2,46 +2,73 @@
 # Dependencies
 node_modules/
 
-# Build artifacts
+# Build outputs
 dist/
 build/
-*.vue.d.ts
+coverage/
+
+# Logs
+*.log
 
 # Environment variables
 .env
 .env.local
-*.env.*
+.env.*
 
-# Editor/IDE files
+# IDE files
 .vscode/
 .idea/
 *.swp
 *.swo
 *.tmp
 
-# Logs
-*.log
-
-# Python cache (if any Python files exist in the project)
+# Python
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
-
-# Coverage reports
-coverage/
-htmlcov/
+.Python
+*.so
 .coverage
+htmlcov/
+.pytest_cache/
+.mypy_cache/
 
-# Temporary files
-*.tmp
-*.temp
+# Compiled and binary files
+*.class
+*.o
+*.obj
+*.exe
+*.dll
+*.so
+*.a
+*.out
 
 # OS generated files
 .DS_Store
 Thumbs.db
 
-# Local configuration
-!.env.example
-!.env.template
+# Archives
+*.zip
+*.gz
+*.tar
+*.tgz
+*.bz2
+*.xz
+*.7z
+*.rar
+*.zst
+*.lz4
+*.lzh
+*.cab
+*.arj
+*.rpm
+*.deb
+*.Z
+*.lz
+*.lzo
+*.tar.gz
+*.tar.bz2
+*.tar.xz
+*.tar.zst
 ```
