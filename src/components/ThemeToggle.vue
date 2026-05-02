@@ -1,11 +1,9 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue';
-
 interface Props {
   isDark: boolean;
 }
 
-const props = defineProps<Props>();
+defineProps<Props>();
 const emit = defineEmits<{
   toggle: [];
 }>();

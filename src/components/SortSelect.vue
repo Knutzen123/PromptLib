@@ -5,7 +5,7 @@ interface Props {
   sortBy: SortOption;
 }
 
-const props = defineProps<Props>();
+defineProps<Props>();
 const emit = defineEmits<{
   sortChange: [option: SortOption];
 }>();
