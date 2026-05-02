@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { computed } from 'vue';
 import type { PromptItem } from '../types';
+import Sidebar from './Sidebar.vue';
+import Tag from './Tag.vue';
 
 interface Props {
   isOpen: boolean;

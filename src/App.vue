@@ -12,12 +12,10 @@ import FilterCount from './components/FilterCount.vue';
 import BulkToolbar from './components/BulkToolbar.vue';
 import PromptCard from './components/PromptCard.vue';
 import EmptyState from './components/EmptyState.vue';
-import Sidebar from './components/Sidebar.vue';
 import PromptForm from './components/PromptForm.vue';
 import PromptDetail from './components/PromptDetail.vue';
 import Overlay from './components/Overlay.vue';
 import ThemeToggle from './components/ThemeToggle.vue';
-import Tag from './components/Tag.vue';
 
 // State
 const items = ref<PromptItem[]>([]);
@@ -143,11 +141,6 @@ function getPopularThreshold(): number {
   return Math.max(2, counts[Math.max(0, Math.floor(counts.length * 0.3))] || 1);
 }
 
-function isPopular(item: PromptItem): boolean {
-  const threshold = getPopularThreshold();
-  return (item.copyCount || 0) >= threshold && threshold > 0;
-}
-
 // Event handlers
 function toggleTheme() {
   isDark.value = !isDark.value;
@@ -266,6 +259,53 @@ function handleCreateNew() {
   editingId.value = null;
   isFormOpen.value = true;
 }
+
+function handleImport(event: Event) {
+  const target = event.target as HTMLInputElement;
+  const file = target.files?.[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const importedData = JSON.parse(e.target?.result as string);
+      const dataArray = Array.isArray(importedData) ? importedData : [importedData];
+      
+      // Validate and add items
+      let addedCount = 0;
+      for (const item of dataArray) {
+        if (item.title && item.text) {
+          const newItem: PromptItem = {
+            id: item.id || Date.now().toString(36) + Math.random().toString(36).slice(2, 7),
+            title: item.title,
+            description: item.description || '',
+            text: item.text,
+            tags: item.tags || [],
+            type: item.type || 'prompt',
+            copyCount: item.copyCount || 0,
+            createdAt: item.createdAt || Date.now(),
+            updatedAt: Date.now()
+          };
+          items.value.unshift(newItem);
+          addedCount++;
+        }
+      }
+      
+      if (addedCount > 0) {
+        alert(`${addedCount} Eintrag${addedCount > 1 ? 'e' : ''} erfolgreich importiert!`);
+      } else {
+        alert('Keine gültigen Einträge gefunden.');
+      }
+    } catch (error) {
+      console.error('Import error:', error);
+      alert('Fehler beim Importieren. Bitte stellen Sie sicher, dass die Datei ein gültiges JSON-Format hat.');
+    }
+  };
+  reader.readAsText(file);
+  
+  // Reset input so the same file can be selected again
+  target.value = '';
+}
 </script>
 
 <template>
@@ -297,6 +337,29 @@ function handleCreateNew() {
         <div class="hero-row">
           <h1>Meine Bibliothek</h1>
           <div class="hero-actions">
+            <label class="btn btn-secondary" style="cursor: pointer;">
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                <polyline points="17 8 12 3 7 8" />
+                <line x1="12" y1="3" x2="12" y2="15" />
+              </svg>
+              Importieren
+              <input
+                type="file"
+                accept=".json"
+                style="display: none;"
+                @change="handleImport"
+              />
+            </label>
             <button class="btn btn-secondary" @click="handleBulkExport">
               <svg
                 width="16"
