@@ -183,7 +183,21 @@ h2 { font-size: clamp(20px, 3vw, 24px); font-weight: 600; line-height: 1.3; }
 .card.selected { border-color: var(--color-interactive); box-shadow: 0 0 0 2px var(--color-interactive); }
 
 .card-header { display: flex; align-items: flex-start; gap: var(--spacing-1); margin-bottom: var(--spacing-1); } 
-.card-checkbox { margin-top: 2px; accent-color: var(--color-interactive); width: 16px; height: 16px; cursor: pointer; flex-shrink: 0; }
+.card-checkbox { 
+  margin-top: 2px; 
+  accent-color: var(--color-interactive); 
+  width: 16px; 
+  height: 16px; 
+  cursor: pointer; 
+  flex-shrink: 0;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+.card:hover .card-checkbox,
+.card.selected .card-checkbox,
+.bulk-toolbar.visible ~ .prompt-grid .card-checkbox { 
+  opacity: 1; 
+}
 .card-tags { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: var(--spacing-1); }
 .card-title { font-size: 16px; font-weight: 600; margin-bottom: 4px; }
 .card-desc { font-size: 14px; color: var(--color-text-muted); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; margin-bottom: var(--spacing-1); }
@@ -250,6 +264,7 @@ h2 { font-size: clamp(20px, 3vw, 24px); font-weight: 600; line-height: 1.3; }
   overflow: hidden; 
 } 
 .sidebar.open { transform: translateX(0); }
+.sidebar.reference-mode { opacity: 0.6; pointer-events: none; z-index: 309 !important; }
 .sidebar-header { display: flex; align-items: center; justify-content: space-between; padding: var(--spacing-2); border-bottom: 1px solid var(--color-border); flex-shrink: 0; transition: border-color 0.25s ease; } 
 .sidebar-header h2 { font-size: 18px; font-weight: 600; }
 .sidebar-body { flex: 1; overflow-y: auto; padding: var(--spacing-2); } 
@@ -401,14 +416,54 @@ h2 { font-size: clamp(20px, 3vw, 24px); font-weight: 600; line-height: 1.3; }
 [data-theme="dark"] .auto-tag-btn { background: #1E3A5F; color: #60A5FA; border-color: #60A5FA; }
 [data-theme="dark"] .auto-tag-btn:hover { background: #60A5FA; color: #121212; }
 
+/* Ollama Styles */
 .ollama-section { margin-top: var(--spacing-2); padding-top: var(--spacing-2); border-top: 1px solid var(--color-border); transition: border-color 0.25s ease; }
+.ollama-header { 
+  display: flex; 
+  align-items: center; 
+  justify-content: space-between; 
+  cursor: pointer; 
+  padding: 8px 0; 
+  user-select: none;
+}
+.ollama-header:hover { opacity: 0.9; }
+.ollama-body { 
+  margin-top: var(--spacing-1); 
+  transition: all 0.2s ease; 
+  overflow: hidden; 
+}
+.ollama-body.collapsed { 
+  max-height: 0; 
+  margin-top: 0; 
+  padding-top: 0; 
+  border: none; 
+  pointer-events: none;
+}
+.ollama-status { 
+  font-size: 12px; 
+  margin-top: 6px; 
+  min-height: 18px; 
+  display: flex; 
+  align-items: center; 
+  gap: 6px; 
+}
+.ollama-status.error { color: var(--color-destructive); }
+.ollama-status.warning { color: var(--color-warning-text); }
+.ollama-status.success { color: #22C55E; }
+.ollama-setup-link { 
+  font-size: 12px; 
+  color: var(--color-text-muted); 
+  text-decoration: none; 
+}
+.ollama-setup-link:hover { color: var(--color-text-primary); text-decoration: underline; }
 .ollama-row { display: flex; gap: 8px; margin-bottom: 8px; }
-.ollama-status { font-size: 12px; margin-top: 6px; min-height: 18px; }
 .ollama-results { margin-top: 12px; padding: 12px; background: var(--color-bg); border-radius: var(--radius); border: 1px solid var(--color-border); transition: background-color 0.25s ease, border-color 0.25s ease; }
 .ollama-preview { font-size: 13px; color: var(--color-text-muted); margin: 6px 0; max-height: 100px; overflow-y: auto; white-space: pre-wrap; background: var(--color-surface); padding: 8px; border-radius: 4px; border: 1px solid var(--color-border); transition: background-color 0.25s ease, border-color 0.25s ease; }
 .ollama-preview::-webkit-scrollbar { width: 6px; }
 .ollama-preview::-webkit-scrollbar-track { background: var(--scrollbar-track); }
 .ollama-preview::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: 3px; }
+
+@keyframes spin { to { transform: rotate(360deg); } }
 
 .footer { border-top: 1px solid var(--color-border); padding: 24px var(--spacing-3); text-align: center; font-size: 13px; color: var(--color-text-muted); transition: border-color 0.25s ease; } 
 .footer a { color: var(--color-text-muted); text-decoration: underline; } 
@@ -474,21 +529,14 @@ h2 { font-size: clamp(20px, 3vw, 24px); font-weight: 600; line-height: 1.3; }
   <div class="form-group"><label class="form-label" for="input-text">Inhalt <span class="req">*</span></label><textarea class="form-textarea" id="input-text" placeholder="System-Prompt / Instructions…" maxlength="5000"></textarea><div class="char-count"><span id="char-count">0</span> / 5000 Zeichen</div></div>
   <div class="form-group"><label class="form-label">Tags</label><div class="tag-input-wrap" id="tag-input-wrap"><input type="text" class="tag-input-field" id="tag-input-field" placeholder="Tag eingeben…" autocomplete="off"></div><div id="auto-tag-section" class="auto-tag-section hidden"><div class="label-meta" style="color:#3B82F6;margin-bottom:4px;">Auto-Erkennung</div><div class="auto-tags" id="auto-tags"></div></div><div class="tag-suggestions" id="tag-suggestions"></div></div>
   
-  <!-- OLLAMA INTEGRATION -->
+  <!-- OLLAMA INTEGRATION (Progressive Disclosure) -->
   <div class="ollama-section">
-    <label class="form-label">🤖 KI-Unterstützung (Ollama)</label>
-    <div class="ollama-row">
-      <input type="text" class="form-input-sm" id="ollama-url" value="http://localhost:11434" placeholder="Ollama URL">
-      <input type="text" class="form-input-sm" id="ollama-model" value="llama3.2" placeholder="Modell">
+    <div class="ollama-header" id="ollama-toggle">
+      <label class="form-label" style="margin:0;cursor:inherit;">🤖 KI-Optimierung</label>
+      <span id="ollama-state-indicator" style="font-size:12px;color:var(--color-text-muted);">Einrichten ▾</span>
     </div>
-    <button class="btn btn-secondary btn-sm" id="btn-ollama-optimize" style="width:100%;">Prompt optimieren & Tags vorschlagen</button>
-    <div id="ollama-status" class="ollama-status"></div>
-    <div id="ollama-results" class="ollama-results hidden">
-      <div class="label-meta">Vorgeschlagene Tags</div>
-      <div id="ollama-suggested-tags" style="display:flex;gap:6px;flex-wrap:wrap;margin:6px 0;"></div>
-      <div class="label-meta">Optimierter Inhalt</div>
-      <div id="ollama-improved-text" class="ollama-preview"></div>
-      <button class="btn btn-primary btn-sm" id="btn-apply-ollama" style="margin-top:8px;">Vorschläge übernehmen</button>
+    <div class="ollama-body collapsed" id="ollama-body">
+      <!-- Dynamischer Content wird per JS eingefügt -->
     </div>
   </div>
 </div><div class="sidebar-footer"><button class="btn btn-primary" id="btn-save">Speichern</button><button class="btn btn-secondary" id="btn-cancel-form">Abbrechen</button><span class="shortcut-hint" style="margin-left:auto;">⌘↵</span></div></aside>
@@ -513,6 +561,8 @@ h2 { font-size: clamp(20px, 3vw, 24px); font-weight: 600; line-height: 1.3; }
 const $ = s => document.querySelector(s);
 const STORAGE_KEY = 'promptlib_items';
 const THEME_KEY = 'promptlib_theme';
+const DRAFT_KEY = 'promptlib_draft';
+const DRAFT_SAVE_INTERVAL = 10000;
 
 const EXCLUDED_AUTO_TAGS = new Set([
   'agent', 'agenten', 'prompt', 'prompts', 'promptlib', 'system', 'keine',
@@ -548,7 +598,6 @@ const TAG_COLORS = [
   { bg: '#FFF1F2', border: '#FDA4AF', text: '#9F1239' },
 ];
 
-// Dark mode variants for tags
 const TAG_COLORS_DARK = [
   { bg: '#1E3A5F', border: '#3B82F6', text: '#93C5FD' },
   { bg: '#164E2E', border: '#22C55E', text: '#86EFAC' },
@@ -612,21 +661,14 @@ function getTagColor(tag) {
   const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
   const colors = isDark ? FIXED_TAG_COLORS_DARK : FIXED_TAG_COLORS;
   if (colors[tag]) return colors[tag];
-  
   const colorSet = isDark ? TAG_COLORS_DARK : TAG_COLORS;
   let hash = 0; 
-  for (let i = 0; i < tag.length; i++) { 
-    hash = ((hash << 5) - hash) + tag.charCodeAt(i); 
-    hash |= 0; 
-  } 
+  for (let i = 0; i < tag.length; i++) { hash = ((hash << 5) - hash) + tag.charCodeAt(i); hash |= 0; } 
   return colorSet[Math.abs(hash) % colorSet.length]; 
 }
 
 function renderTag(tag, isType = false) { 
-  if (isType) {
-    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-    return `<span class="tag type-tag">${esc(tag)}</span>`;
-  }
+  if (isType) return `<span class="tag type-tag">${esc(tag)}</span>`;
   const c = getTagColor(tag); 
   return `<span class="tag" style="background:${c.bg};border-color:${c.border};color:${c.text}">${esc(tag)}</span>`; 
 }
@@ -636,73 +678,30 @@ let formTags = [];
 let autoDetectedType = null;
 let autoSuggestedTags = [];
 let ollamaResponse = null;
+let draftTimer = null;
 
 const dom = { 
-  heroTitle: $('h1'), 
-  searchInput: $('#search-input'), 
-  filterBar: $('#filter-bar'), 
-  filterTags: $('#filter-tags'), 
-  sortSelect: $('#sort-select'), 
-  filterCount: $('#filter-count'), 
-  bulkToolbar: $('#bulk-toolbar'), 
-  bulkCount: $('#bulk-count'), 
-  skeletonGrid: $('#skeleton-grid'), 
-  promptGrid: $('#prompt-grid'), 
-  emptyState: $('#empty-state'), 
-  emptyResults: $('#empty-results'), 
-  emptySearchTerm: $('#empty-search-term'), 
-  overlay: $('#overlay'), 
-  formSidebar: $('#form-sidebar'), 
-  formTitle: $('#form-title'), 
-  inputTitle: $('#input-title'), 
-  inputDesc: $('#input-desc'), 
-  inputText: $('#input-text'), 
-  charCount: $('#char-count'), 
-  tagInputWrap: $('#tag-input-wrap'), 
-  tagInputField: $('#tag-input-field'), 
-  tagSuggestions: $('#tag-suggestions'), 
-  btnNew: $('#btn-new'), 
-  btnExportAll: $('#btn-export-all'), 
-  btnSave: $('#btn-save'), 
-  btnCancelForm: $('#btn-cancel-form'), 
-  btnCloseForm: $('#btn-close-form'), 
-  btnEmptyNew: $('#btn-empty-new'), 
-  btnResetFilters: $('#btn-reset-filters'), 
-  bulkExport: $('#btn-bulk-export'), 
-  bulkDelete: $('#btn-bulk-delete'), 
-  bulkClear: $('#btn-bulk-clear'), 
-  detailPanel: $('#detail-panel'), 
-  detailTitle: $('#detail-title'), 
-  detailTags: $('#detail-tags'), 
-  detailDescWrap: $('#detail-desc-wrap'), 
-  detailDesc: $('#detail-desc'), 
-  detailText: $('#detail-text'), 
-  detailMeta: $('#detail-meta'), 
-  btnCloseDetail: $('#btn-close-detail'), 
-  btnDetailCopy: $('#btn-detail-copy'), 
-  btnDetailEdit: $('#btn-detail-edit'), 
-  btnDetailDelete: $('#btn-detail-delete'), 
-  unsavedDialog: $('#unsaved-dialog'), 
-  btnKeepEditing: $('#btn-keep-editing'), 
-  btnDiscard: $('#btn-discard'), 
-  contextMenu: $('#context-menu'), 
-  toastContainer: $('#toast-container'), 
-  shortcutsPanel: $('#shortcuts-panel'), 
-  btnCloseShortcuts: $('#btn-close-shortcuts'), 
-  btnShortcuts: $('#btn-shortcuts'), 
-  importInput: $('#import-input'), 
-  btnImport: $('#btn-import'), 
-  autoTagSection: $('#auto-tag-section'), 
-  autoTagsContainer: $('#auto-tags'), 
-  ollamaUrl: $('#ollama-url'), 
-  ollamaModel: $('#ollama-model'), 
-  btnOllamaOptimize: $('#btn-ollama-optimize'), 
-  ollamaStatus: $('#ollama-status'), 
-  ollamaResults: $('#ollama-results'), 
-  ollamaSuggestedTags: $('#ollama-suggested-tags'), 
-  ollamaImprovedText: $('#ollama-improved-text'), 
-  btnApplyOllama: $('#btn-apply-ollama'),
-  themeToggle: $('#theme-toggle')
+  heroTitle: $('h1'), searchInput: $('#search-input'), filterBar: $('#filter-bar'), filterTags: $('#filter-tags'), 
+  sortSelect: $('#sort-select'), filterCount: $('#filter-count'), bulkToolbar: $('#bulk-toolbar'), bulkCount: $('#bulk-count'), 
+  skeletonGrid: $('#skeleton-grid'), promptGrid: $('#prompt-grid'), emptyState: $('#empty-state'), emptyResults: $('#empty-results'), 
+  emptySearchTerm: $('#empty-search-term'), overlay: $('#overlay'), formSidebar: $('#form-sidebar'), formTitle: $('#form-title'), 
+  inputTitle: $('#input-title'), inputDesc: $('#input-desc'), inputText: $('#input-text'), charCount: $('#char-count'), 
+  tagInputWrap: $('#tag-input-wrap'), tagInputField: $('#tag-input-field'), tagSuggestions: $('#tag-suggestions'), 
+  btnNew: $('#btn-new'), btnExportAll: $('#btn-export-all'), btnSave: $('#btn-save'), btnCancelForm: $('#btn-cancel-form'), 
+  btnCloseForm: $('#btn-close-form'), btnEmptyNew: $('#btn-empty-new'), btnResetFilters: $('#btn-reset-filters'), 
+  bulkExport: $('#btn-bulk-export'), bulkDelete: $('#btn-bulk-delete'), bulkClear: $('#btn-bulk-clear'), 
+  detailPanel: $('#detail-panel'), detailTitle: $('#detail-title'), detailTags: $('#detail-tags'), 
+  detailDescWrap: $('#detail-desc-wrap'), detailDesc: $('#detail-desc'), detailText: $('#detail-text'), detailMeta: $('#detail-meta'), 
+  btnCloseDetail: $('#btn-close-detail'), btnDetailCopy: $('#btn-detail-copy'), btnDetailEdit: $('#btn-detail-edit'), 
+  btnDetailDelete: $('#btn-detail-delete'), unsavedDialog: $('#unsaved-dialog'), btnKeepEditing: $('#btn-keep-editing'), 
+  btnDiscard: $('#btn-discard'), contextMenu: $('#context-menu'), toastContainer: $('#toast-container'), 
+  shortcutsPanel: $('#shortcuts-panel'), btnCloseShortcuts: $('#btn-close-shortcuts'), btnShortcuts: $('#btn-shortcuts'), 
+  importInput: $('#import-input'), btnImport: $('#btn-import'), autoTagSection: $('#auto-tag-section'), 
+  autoTagsContainer: $('#auto-tags'), ollamaUrl: $('#ollama-url'), ollamaModel: $('#ollama-model'), 
+  btnOllamaOptimize: $('#btn-ollama-optimize'), ollamaStatus: $('#ollama-status'), ollamaResults: $('#ollama-results'), 
+  ollamaSuggestedTags: $('#ollama-suggested-tags'), ollamaImprovedText: $('#ollama-improved-text'), 
+  btnApplyOllama: $('#btn-apply-ollama'), themeToggle: $('#theme-toggle'),
+  ollamaToggle: $('#ollama-toggle'), ollamaBody: $('#ollama-body'), ollamaStateIndicator: $('#ollama-state-indicator')
 };
 
 function sanitizeTag(t) { return t.trim().toLowerCase().replace(/[^a-zäöüß0-9\-_]/g, ''); }
@@ -713,32 +712,147 @@ function genId() { return Date.now().toString(36) + Math.random().toString(36).s
 // === THEME MANAGEMENT ===
 function initTheme() {
   const saved = localStorage.getItem(THEME_KEY);
-  if (saved) {
-    document.documentElement.setAttribute('data-theme', saved);
-    updateThemeToggle(saved);
-  } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
-    document.documentElement.setAttribute('data-theme', 'dark');
-    updateThemeToggle('dark');
-  }
+  if (saved) { document.documentElement.setAttribute('data-theme', saved); updateThemeToggle(saved); } 
+  else if (window.matchMedia('(prefers-color-scheme: dark)').matches) { document.documentElement.setAttribute('data-theme', 'dark'); updateThemeToggle('dark'); }
 }
-
 function toggleTheme() {
   const current = document.documentElement.getAttribute('data-theme');
   const next = current === 'dark' ? 'light' : 'dark';
   document.documentElement.setAttribute('data-theme', next);
   localStorage.setItem(THEME_KEY, next);
   updateThemeToggle(next);
-  // Re-render tags to apply new colors
   if (state.detailId) openDetail(state.detailId);
   renderAll();
 }
-
 function updateThemeToggle(theme) {
   if (dom.themeToggle) {
     dom.themeToggle.setAttribute('data-theme', theme);
     dom.themeToggle.setAttribute('aria-label', theme === 'dark' ? 'Light Mode aktivieren' : 'Dark Mode aktivieren');
     dom.themeToggle.title = theme === 'dark' ? 'Light Mode (T)' : 'Dark Mode (T)';
   }
+}
+
+// === DRAFT MANAGEMENT ===
+function saveDraft() {
+  if (!state.formDirty) return;
+  const draft = {
+    title: dom.inputTitle.value, desc: dom.inputDesc.value, text: dom.inputText.value,
+    tags: [...formTags], editingId: state.editingId, timestamp: Date.now()
+  };
+  localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+  showDraftSavedIndicator();
+}
+function loadDraft() {
+  const raw = localStorage.getItem(DRAFT_KEY);
+  if (!raw) return null;
+  try {
+    const draft = JSON.parse(raw);
+    if (draft.editingId) {
+      const item = state.items.find(p => p.id === draft.editingId);
+      if (item && draft.timestamp <= item.updatedAt) return null;
+    }
+    return draft;
+  } catch { return null; }
+}
+function clearDraft() { localStorage.removeItem(DRAFT_KEY); if (draftTimer) clearInterval(draftTimer); }
+function restoreDraft(draft) {
+  dom.inputTitle.value = draft.title || ''; dom.inputDesc.value = draft.desc || ''; dom.inputText.value = draft.text || '';
+  formTags = [...(draft.tags || [])]; state.editingId = draft.editingId || null;
+  renderFormTags(); updateCharCount(); updateAutoDetection();
+  showToast('Entwurf wiederhergestellt.', 'normal', { duration: 3000 });
+}
+function showDraftSavedIndicator() {
+  const indicator = document.createElement('div');
+  indicator.textContent = '✓ Gesichert';
+  indicator.style.cssText = 'position:fixed;bottom:20px;right:20px;background:var(--color-interactive);color:var(--color-bg);padding:6px 12px;border-radius:4px;font-size:12px;z-index:600;animation:fadeInOut 2s ease;';
+  document.body.appendChild(indicator);
+  setTimeout(() => indicator.remove(), 2000);
+}
+function startDraftAutoSave() { if (draftTimer) clearInterval(draftTimer); draftTimer = setInterval(saveDraft, DRAFT_SAVE_INTERVAL); }
+
+// === OLLAMA STATE MANAGEMENT ===
+const OLLAMA_STATES = { NOT_CONFIGURED: 'not_configured', CHECKING: 'checking', CONNECTED: 'connected', ERROR_CORS: 'error_cors', ERROR_MODEL: 'error_model', ERROR_NETWORK: 'error_network', LOADING: 'loading', SUCCESS: 'success' };
+let ollamaState = OLLAMA_STATES.NOT_CONFIGURED;
+
+async function checkOllamaConnection() {
+  ollamaState = OLLAMA_STATES.CHECKING; updateOllamaUI();
+  try {
+    const controller = new AbortController(); const timeout = setTimeout(() => controller.abort(), 3000);
+    const response = await fetch(`${dom.ollamaUrl.value}/api/tags`, { method: 'GET', signal: controller.signal });
+    clearTimeout(timeout);
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const data = await response.json(); const models = data.models?.map(m => m.name) || [];
+    if (!models.includes(dom.ollamaModel.value)) { ollamaState = OLLAMA_STATES.ERROR_MODEL; updateOllamaUI({ availableModels: models }); return false; }
+    ollamaState = OLLAMA_STATES.CONNECTED; updateOllamaUI(); return true;
+  } catch (err) {
+    if (err.name === 'AbortError') ollamaState = OLLAMA_STATES.ERROR_NETWORK;
+    else if (err.message.includes('Failed to fetch') || err.message.includes('CORS')) ollamaState = OLLAMA_STATES.ERROR_CORS;
+    else ollamaState = OLLAMA_STATES.ERROR_NETWORK;
+    updateOllamaUI(); return false;
+  }
+}
+
+function updateOllamaUI(extra = {}) {
+  const body = dom.ollamaBody, indicator = dom.ollamaStateIndicator;
+  let content = '', indicatorText = '', isCollapsed = true;
+  switch (ollamaState) {
+    case OLLAMA_STATES.NOT_CONFIGURED:
+      indicatorText = 'Einrichten ▾';
+      content = `<div style="padding:12px;background:var(--color-bg);border:1px solid var(--color-border);border-radius:var(--radius);">
+        <p style="font-size:13px;color:var(--color-text-muted);margin:0 0 12px 0;">Ollama muss lokal installiert und erreichbar sein.</p>
+        <ol style="font-size:12px;color:var(--color-text-muted);margin:0 0 12px 16px;padding:0;">
+          <li><a href="https://ollama.com" target="_blank" class="ollama-setup-link">Ollama installieren ↗</a></li>
+          <li>Modell pullen: <code style="background:var(--color-surface);padding:2px 4px;border-radius:3px;">ollama pull llama3.2</code></li>
+          <li>CORS erlauben: <code style="background:var(--color-surface);padding:2px 4px;border-radius:3px;">OLLAMA_ORIGINS="*" ollama serve</code></li>
+        </ol>
+        <button class="btn btn-secondary btn-sm" id="ollama-test-connection">Verbindung testen</button></div>`;
+      break;
+    case OLLAMA_STATES.CHECKING:
+      indicatorText = 'Prüfe…';
+      content = `<div style="padding:12px;text-align:center;color:var(--color-text-muted);">
+        <svg style="width:20px;height:20px;animation:spin 1s linear infinite;margin:0 auto 8px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>Verbinde mit Ollama…</div>`;
+      isCollapsed = false; break;
+    case OLLAMA_STATES.CONNECTED:
+      indicatorText = `✓ ${dom.ollamaModel.value}`;
+      content = `<div style="display:flex;gap:8px;align-items:center;">
+        <button class="btn btn-secondary btn-sm" id="btn-ollama-optimize" style="flex:1;">Prompt optimieren</button>
+        <button class="btn btn-ghost btn-sm" id="ollama-settings" title="Einstellungen">⚙</button></div>`;
+      isCollapsed = false; break;
+    case OLLAMA_STATES.ERROR_CORS:
+      indicatorText = '⚠ Nicht erreichbar';
+      content = `<div style="padding:12px;background:var(--color-warning-bg);border:1px solid var(--color-warning-border);border-radius:var(--radius);">
+        <p style="font-size:13px;color:var(--color-warning-text);margin:0 0 8px 0;"><strong>CORS-Blockade</strong><br>Browser blockiert die Verbindung.</p>
+        <p style="font-size:12px;color:var(--color-warning-text);margin:0 0 12px 0;opacity:0.9;">Starte Ollama mit: <code style="background:rgba(255,255,255,0.2);padding:2px 4px;border-radius:3px;">OLLAMA_ORIGINS="*" ollama serve</code></p>
+        <button class="btn btn-secondary btn-sm" id="ollama-retry">Erneut versuchen</button></div>`;
+      isCollapsed = false; break;
+    case OLLAMA_STATES.ERROR_MODEL:
+      indicatorText = '⚠ Modell nicht gefunden';
+      content = `<div style="padding:12px;background:var(--color-warning-bg);border:1px solid var(--color-warning-border);border-radius:var(--radius);">
+        <p style="font-size:13px;color:var(--color-warning-text);margin:0 0 8px 0;">Modell "<strong>${dom.ollamaModel.value}</strong>" nicht verfügbar.</p>
+        <p style="font-size:12px;color:var(--color-warning-text);margin:0 0 12px 0;opacity:0.9;">Verfügbare Modelle: ${(extra.availableModels || []).join(', ') || 'Keine'}</p>
+        <div style="display:flex;gap:6px;"><input type="text" class="form-input-sm" id="ollama-model-select" value="${dom.ollamaModel.value}" placeholder="Modell-Name" style="flex:1;"><button class="btn btn-secondary btn-sm" id="ollama-save-model">Übernehmen</button></div></div>`;
+      isCollapsed = false; break;
+    case OLLAMA_STATES.ERROR_NETWORK:
+      indicatorText = '⚠ Verbindungsfehler';
+      content = `<div style="padding:12px;background:var(--color-warning-bg);border:1px solid var(--color-warning-border);border-radius:var(--radius);">
+        <p style="font-size:13px;color:var(--color-warning-text);margin:0 0 12px 0;">Keine Verbindung zu <code>${dom.ollamaUrl.value}</code></p>
+        <button class="btn btn-secondary btn-sm" id="ollama-retry">Erneut versuchen</button></div>`;
+      isCollapsed = false; break;
+  }
+  body.innerHTML = content; body.classList.toggle('collapsed', isCollapsed); indicator.textContent = indicatorText;
+  if ($('#ollama-test-connection')) $('#ollama-test-connection').onclick = async () => { await checkOllamaConnection(); };
+  if ($('#ollama-retry')) $('#ollama-retry').onclick = async () => { await checkOllamaConnection(); };
+  if ($('#ollama-save-model')) $('#ollama-save-model').onclick = () => { const m = $('#ollama-model-select').value.trim(); if (m) { dom.ollamaModel.value = m; checkOllamaConnection(); } };
+  if ($('#ollama-settings')) $('#ollama-settings').onclick = () => {
+    body.classList.toggle('collapsed');
+    if (!body.classList.contains('collapsed')) {
+      body.innerHTML = `<div style="padding:12px;background:var(--color-bg);border:1px solid var(--color-border);border-radius:var(--radius);">
+        <div class="form-group" style="margin-bottom:12px;"><label class="form-label" style="font-size:12px;">Ollama URL</label><input type="text" class="form-input-sm" id="ollama-url-config" value="${dom.ollamaUrl.value}"></div>
+        <div class="form-group" style="margin-bottom:12px;"><label class="form-label" style="font-size:12px;">Modell</label><input type="text" class="form-input-sm" id="ollama-model-config" value="${dom.ollamaModel.value}"></div>
+        <button class="btn btn-primary btn-sm" id="ollama-save-config">Speichern</button></div>`;
+      $('#ollama-save-config').onclick = () => { dom.ollamaUrl.value = $('#ollama-url-config').value; dom.ollamaModel.value = $('#ollama-model-config').value; checkOllamaConnection(); };
+    } else updateOllamaUI();
+  };
 }
 
 function incrementCopyCount(id) { const item = state.items.find(p => p.id === id); if (!item) return; item.copyCount = (item.copyCount || 0) + 1; item.lastCopiedAt = Date.now(); save(); }
@@ -752,11 +866,8 @@ function load() {
     if (legacyPrompts.length || legacyAgents.length) {
       state.items = [...legacyPrompts.map(p => ({...p, type: p.type || 'prompt'})), ...legacyAgents.map(a => ({...a, type: a.type || 'agent'}))];
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state.items));
-      localStorage.removeItem('promptlib_prompts');
-      localStorage.removeItem('promptlib_agents');
-    } else {
-      state.items = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
-    }
+      localStorage.removeItem('promptlib_prompts'); localStorage.removeItem('promptlib_agents');
+    } else state.items = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
     state.items.forEach(p => {
       if (typeof p.copyCount !== 'number') p.copyCount = 0;
       if (!p.description) p.description = '';
@@ -791,22 +902,17 @@ const CATEGORY_KEYWORDS = {
 };
 
 function detectType(title, text) {
-  const titleLower = title.toLowerCase();
-  const textLower = text.toLowerCase();
-  const fullContent = `${titleLower} ${textLower}`;
+  const titleLower = title.toLowerCase(), textLower = text.toLowerCase(), fullContent = `${titleLower} ${textLower}`;
   let promptScore = 0, agentScore = 0;
   if (/^(du bist|you are|act as|agiere als)/im.test(textLower)) agentScore += 5;
   if (/^#+\s*(rolle|role|persona|system)/im.test(textLower)) agentScore += 5;
-  const agentMedium = [/deine (aufgabe|rolle|aufgaben) (ist|sind|lautet)/i, /antworte (immer|stets|ausschließlich)/i, /verhalte dich (wie|als ob|stets)/i, /dein (ton|stil|sprache) (ist|soll sein|bleibt)/i, /(system prompt|systemnachricht|system message)/i, /always respond/i, /your role is/i, /you are an? expert/i, /persona:/i, /instructions?:/i];
-  agentMedium.forEach(p => { if(p.test(fullContent)) agentScore += 3; });
+  [/deine (aufgabe|rolle|aufgaben) (ist|sind|lautet)/i, /antworte (immer|stets|ausschließlich)/i, /verhalte dich (wie|als ob|stets)/i, /dein (ton|stil|sprache) (ist|soll sein|bleibt)/i, /(system prompt|systemnachricht|system message)/i, /always respond/i, /your role is/i, /you are an? expert/i, /persona:/i, /instructions?:/i].forEach(p => { if(p.test(fullContent)) agentScore += 3; });
   if (/\b(wenn|if)\b.*\b(dann|then)\b/i.test(fullContent)) agentScore += 1;
   if ((text.match(/##+\s*\w+/g) || []).length >= 3) agentScore += 1;
   if (/\[.*?\]/g.test(text)) agentScore += 1;
   if (textLower.includes('kontext:') || textLower.includes('context:')) agentScore += 1;
-  const promptStrong = [/^(schreibe?|erstelle?|generiere?)\s/im, /^(analysiere?|vergleiche?|erkläre?)\s/im, /^(liste?|fasse zusammen|übersetze?)\s/im, /^(write|create|generate)\s/im, /^(analyze|compare|explain)\s/im, /^(list|summarize|translate)\s/im];
-  promptStrong.forEach(p => { if(p.test(textLower)) promptScore += 4; });
-  const promptMedium = [/in \d+ (worten?|sätzen?|punkten?|schritten?)/i, /in \d+ (words?|sentences?|points?|steps?)/i, /ausgabeformat|output format/i, /beispiel[:\s]/i, /example[:\s]/i, /format:/i, /antwort in/i, /response in/i];
-  promptMedium.forEach(p => { if(p.test(fullContent)) promptScore += 2; });
+  [/^(schreibe?|erstelle?|generiere?)\s/im, /^(analysiere?|vergleiche?|erkläre?)\s/im, /^(liste?|fasse zusammen|übersetze?)\s/im, /^(write|create|generate)\s/im, /^(analyze|compare|explain)\s/im, /^(list|summarize|translate)\s/im].forEach(p => { if(p.test(textLower)) promptScore += 4; });
+  [/in \d+ (worten?|sätzen?|punkten?|schritten?)/i, /in \d+ (words?|sentences?|points?|steps?)/i, /ausgabeformat|output format/i, /beispiel[:\s]/i, /example[:\s]/i, /format:/i, /antwort in/i, /response in/i].forEach(p => { if(p.test(fullContent)) promptScore += 2; });
   if (/\b(agent|assistant|assistent|bot|gpt)\b/i.test(titleLower)) agentScore += 3;
   if (/\b(prompt|vorlage|template|generator)\b/i.test(titleLower)) promptScore += 3;
   if (/\b(analyse|erkläre?|erstelle?|schreibe?)\b/i.test(titleLower)) promptScore += 2;
@@ -818,8 +924,7 @@ function detectType(title, text) {
 }
 
 function suggestTags(title, text, maxTags = 6) {
-  const titleContent = title.toLowerCase();
-  const bodyContent = text.toLowerCase();
+  const titleContent = title.toLowerCase(), bodyContent = text.toLowerCase();
   const words = bodyContent.split(/\s+/).filter(w => w.length > 3 && !STOPWORDS.has(w));
   const freq = {}; words.forEach(w => { freq[w] = (freq[w] || 0) + 1; });
   const matchedCategories = {};
@@ -827,9 +932,7 @@ function suggestTags(title, text, maxTags = 6) {
     let score = 0; keywords.forEach(kw => { if (titleContent.includes(kw)) score += 4; if (bodyContent.includes(kw)) score += 2; });
     if (score >= 6) matchedCategories[category] = { score };
   }
-  const wordCandidates = Object.entries(freq)
-    .filter(([w, count]) => count >= 2 && w.length >= 5 && w.length <= 20 && !EXCLUDED_AUTO_TAGS.has(w))
-    .sort((a, b) => b[1] - a[1]).slice(0, 6).map(([w]) => sanitizeTag(w)).filter(Boolean);
+  const wordCandidates = Object.entries(freq).filter(([w, count]) => count >= 2 && w.length >= 5 && w.length <= 20 && !EXCLUDED_AUTO_TAGS.has(w)).sort((a, b) => b[1] - a[1]).slice(0, 6).map(([w]) => sanitizeTag(w)).filter(Boolean);
   const tags = new Set();
   Object.entries(matchedCategories).sort((a, b) => b[1].score - a[1].score).slice(0, 3).forEach(([cat]) => tags.add(cat));
   wordCandidates.forEach(w => { if (tags.size < maxTags) tags.add(w); });
@@ -940,12 +1043,38 @@ function openFormSidebar(editId) {
   if (editId) { const p = state.items.find(x => x.id === editId); if (p) { dom.inputTitle.value = p.title || ''; dom.inputDesc.value = p.description || ''; dom.inputText.value = p.text || ''; formTags = [...(p.tags || [])]; } } 
   else { dom.inputTitle.value = ''; dom.inputDesc.value = ''; dom.inputText.value = ''; formTags = []; }
   autoDetectedType = null; autoSuggestedTags = []; dom.autoTagSection.classList.add('hidden');
-  ollamaResponse = null; dom.ollamaResults.classList.add('hidden'); dom.ollamaStatus.textContent = '';
+  ollamaResponse = null; dom.ollamaResults.classList.add('hidden'); dom.ollamaStatus.textContent = ''; ollamaState = OLLAMA_STATES.NOT_CONFIGURED; updateOllamaUI();
+  
+  // Draft-Handling
+  const draft = loadDraft();
+  if (draft) {
+    const banner = document.createElement('div');
+    banner.className = 'form-banner';
+    banner.innerHTML = `<div style="padding:10px 12px;background:var(--color-warning-bg);border:1px solid var(--color-warning-border);border-radius:var(--radius);margin-bottom:var(--spacing-2);display:flex;align-items:center;justify-content:space-between;gap:12px;">
+      <span style="font-size:13px;color:var(--color-warning-text);">📝 Ungespeicherter Entwurf vom ${new Date(draft.timestamp).toLocaleTimeString('de-DE')}</span>
+      <div style="display:flex;gap:6px;">
+        <button class="btn btn-sm btn-secondary" id="draft-discard">Verwerfen</button>
+        <button class="btn btn-sm btn-primary" id="draft-restore">Wiederherstellen</button>
+      </div></div>`;
+    dom.formSidebar.querySelector('.sidebar-body').prepend(banner);
+    banner.querySelector('#draft-restore').onclick = () => { restoreDraft(draft); clearDraft(); banner.remove(); };
+    banner.querySelector('#draft-discard').onclick = () => { clearDraft(); banner.remove(); };
+  }
+  
   renderFormTags(); updateCharCount(); dom.formSidebar.classList.add('open'); openOverlay();
+  if (state.detailId) dom.detailPanel.classList.add('reference-mode');
   setTimeout(() => dom.inputTitle.focus(), 300);
+  startDraftAutoSave();
 }
+
 function closeFormSidebar() { if (state.formDirty) { dom.unsavedDialog.classList.add('open'); dom.btnKeepEditing.focus(); return; } doCloseForm(); }
-function doCloseForm() { dom.formSidebar.classList.remove('open'); state.editingId = null; state.formDirty = false; autoDetectedType = null; autoSuggestedTags = []; ollamaResponse = null; closeOverlay(); }
+function doCloseForm() { 
+  dom.formSidebar.classList.remove('open'); 
+  if (state.detailId) dom.detailPanel.classList.remove('reference-mode');
+  state.editingId = null; state.formDirty = false; autoDetectedType = null; autoSuggestedTags = []; ollamaResponse = null; 
+  clearDraft(); closeOverlay(); 
+}
+
 function renderFormTags() {
   dom.tagInputWrap.querySelectorAll('.tag').forEach(c => c.remove());
   formTags.forEach((t, i) => { const chip = document.createElement('span'); const c = getTagColor(t); chip.className = 'tag'; chip.style.cssText = `background:${c.bg};border-color:${c.border};color:${c.text};`; chip.innerHTML = `${esc(t)}<span class="tag-remove" data-tag-index="${i}">×</span>`; dom.tagInputWrap.insertBefore(chip, dom.tagInputField); });
@@ -960,100 +1089,48 @@ function updateFormSuggestions() { const q = dom.tagInputField.value; const matc
 function updateAutoDetection() { const title = dom.inputTitle.value.trim(), text = dom.inputText.value.trim(); if (text.length < 20) { dom.autoTagSection.classList.add('hidden'); autoDetectedType = null; autoSuggestedTags = []; return; } autoDetectedType = detectType(title, text); autoSuggestedTags = suggestTags(title, text); if (autoSuggestedTags.length > 0) { dom.autoTagsContainer.innerHTML = ''; autoSuggestedTags.forEach(tag => { const isSelected = formTags.includes(tag); const btn = document.createElement('button'); btn.className = `auto-tag-btn${isSelected ? ' selected' : ''}`; btn.textContent = isSelected ? `✓ ${tag}` : `+ ${tag}`; btn.addEventListener('click', () => { if (formTags.includes(tag)) { removeFormTag(formTags.indexOf(tag)); btn.classList.remove('selected'); btn.textContent = `+ ${tag}`; } else { addFormTag(tag); btn.classList.add('selected'); btn.textContent = `✓ ${tag}`; } }); dom.autoTagsContainer.appendChild(btn); }); dom.autoTagSection.classList.remove('hidden'); } else { dom.autoTagSection.classList.add('hidden'); } }
 
 async function optimizeWithOllama() {
-  const title = dom.inputTitle.value.trim();
-  const text = dom.inputText.value.trim();
+  const title = dom.inputTitle.value.trim(), text = dom.inputText.value.trim();
   if (!text) { showToast('Bitte zuerst einen Inhalt eingeben.', 'normal'); return; }
+  const connected = await checkOllamaConnection();
+  if (!connected || ollamaState !== OLLAMA_STATES.CONNECTED) return;
   
-  dom.ollamaStatus.textContent = '🔄 Verbinde mit Ollama...';
-  dom.ollamaResults.classList.add('hidden');
-  dom.btnOllamaOptimize.disabled = true;
-
-  const systemPrompt = `Du bist ein Experte für KI-Prompts. Optimiere den folgenden Prompt für maximale Klarheit und Effektivität. Schlage 3-5 passende Tags vor.
-ANTWORTE AUSSCHLIESSLICH IM FOLGENDEN JSON-FORMAT, OHNE ERKLÄRUNGEN ODER MARKDOWN:
-{
-  "improved_text": "Der optimierte Prompt-Text",
-  "suggested_tags": ["tag1", "tag2", "tag3"]
-}`;
-
+  dom.ollamaStatus.textContent = '🔄 Optimiere...'; dom.ollamaResults.classList.add('hidden'); dom.btnOllamaOptimize.disabled = true;
+  const systemPrompt = `Du bist ein Experte für KI-Prompts. Optimiere den folgenden Prompt für maximale Klarheit und Effektivität. Schlage 3-5 passende Tags vor. ANTWORTE AUSSCHLIESSLICH IM FOLGENDEN JSON-FORMAT: {"improved_text": "...", "suggested_tags": [...]}`;
   const userPrompt = `Titel: ${title || 'Ohne Titel'}\nInhalt:\n${text}`;
-
   try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 15000);
-
-    const response = await fetch(`${dom.ollamaUrl.value}/api/chat`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: dom.ollamaModel.value,
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userPrompt }
-        ],
-        stream: false,
-        options: { temperature: 0.3 }
-      }),
-      signal: controller.signal
-    });
-    clearTimeout(timeout);
-
-    if (!response.ok) throw new Error(`HTTP ${response.status} (${response.statusText})`);
-    
-    const data = await response.json();
-    let content = data.message.content.trim();
-    
-    // Robuster JSON-Parser: Entfernt Markdown-Codeblöcke und findet das erste/gültige JSON
-    content = content.replace(/```json\s*/gi, '').replace(/```\s*/gi, '').trim();
-    const jsonMatch = content.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) throw new Error('Kein gültiges JSON in der Antwort');
-    
-    ollamaResponse = JSON.parse(jsonMatch[0]);
-    
-    dom.ollamaSuggestedTags.innerHTML = '';
-    ollamaResponse.suggested_tags.forEach(tag => {
-      const chip = document.createElement('span');
-      chip.className = 'tag';
-      const c = getTagColor(tag);
-      chip.style.cssText = `background:${c.bg};border-color:${c.border};color:${c.text};`;
-      chip.textContent = tag;
-      dom.ollamaSuggestedTags.appendChild(chip);
-    });
-    dom.ollamaImprovedText.textContent = ollamaResponse.improved_text;
-    dom.ollamaResults.classList.remove('hidden');
-    dom.ollamaStatus.textContent = '✅ Optimierung erfolgreich';
-  } catch (err) {
-    console.error(err);
-    if (err.name === 'AbortError') {
-      dom.ollamaStatus.textContent = '⏱ Timeout: Ollama antwortet zu langsam.';
-    } else if (err.message.includes('Failed to fetch') || err.message.includes('NetworkError')) {
-      dom.ollamaStatus.textContent = '❌ Verbindung fehlgeschlagen. Prüfe Ollama URL & CORS (`OLLAMA_ORIGINS="*"`).';
-    } else if (err instanceof SyntaxError) {
-      dom.ollamaStatus.textContent = '❌ KI-Antwort konnte nicht gelesen werden.';
-    } else {
-      dom.ollamaStatus.textContent = `❌ Fehler: ${err.message}`;
-    }
-  } finally {
-    dom.btnOllamaOptimize.disabled = false;
-  }
+    const controller = new AbortController(); const timeout = setTimeout(() => controller.abort(), 15000);
+    const response = await fetch(`${dom.ollamaUrl.value}/api/chat`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ model: dom.ollamaModel.value, messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: userPrompt }], stream: false, options: { temperature: 0.3 } }), signal: controller.signal });
+    clearTimeout(timeout); if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const data = await response.json(); let content = data.message.content.trim().replace(/```json\s*/gi, '').replace(/```\s*/gi, '').trim();
+    const jsonMatch = content.match(/\{[\s\S]*\}/); if (!jsonMatch) throw new Error('Kein gültiges JSON');
+    ollamaResponse = JSON.parse(jsonMatch[0]); dom.ollamaSuggestedTags.innerHTML = '';
+    ollamaResponse.suggested_tags.forEach(tag => { const chip = document.createElement('span'); chip.className = 'tag'; const c = getTagColor(tag); chip.style.cssText = `background:${c.bg};border-color:${c.border};color:${c.text};`; chip.textContent = tag; dom.ollamaSuggestedTags.appendChild(chip); });
+    dom.ollamaImprovedText.textContent = ollamaResponse.improved_text; dom.ollamaResults.classList.remove('hidden'); dom.ollamaStatus.textContent = '✅ Optimierung erfolgreich';
+  } catch (err) { console.error(err); dom.ollamaStatus.textContent = `❌ Fehler: ${err.message}`; } finally { dom.btnOllamaOptimize.disabled = false; }
 }
 
 function applyOllamaResults() {
   if (!ollamaResponse) return;
   dom.inputText.value = ollamaResponse.improved_text;
-  ollamaResponse.suggested_tags.forEach(tag => {
-    const clean = normalizeTag(sanitizeTag(tag));
-    if (clean && !formTags.includes(clean) && formTags.length < 10) {
-      formTags.push(clean);
-    }
-  });
-  renderFormTags();
-  state.formDirty = true;
-  dom.ollamaResults.classList.add('hidden');
-  dom.ollamaStatus.textContent = '✅ Übernommen';
-  showToast('KI-Vorschläge übernommen.', 'normal', {duration: 2000});
+  ollamaResponse.suggested_tags.forEach(tag => { const clean = normalizeTag(sanitizeTag(tag)); if (clean && !formTags.includes(clean) && formTags.length < 10) formTags.push(clean); });
+  renderFormTags(); state.formDirty = true; dom.ollamaResults.classList.add('hidden'); dom.ollamaStatus.textContent = '✅ Übernommen'; showToast('KI-Vorschläge übernommen.', 'normal', {duration: 2000});
 }
 
-function saveItem() { const title = dom.inputTitle.value.trim(), desc = dom.inputDesc.value.trim(), text = dom.inputText.value.trim(); if (!title) { dom.inputTitle.focus(); showToast('Bitte Titel eingeben.', 'normal'); return; } if (!text) { dom.inputText.focus(); showToast('Bitte Inhalt eingeben.', 'normal'); return; } formTags = cleanTags(formTags); if (state.editingId) { const idx = state.items.findIndex(p => p.id === state.editingId); if (idx !== -1) { state.items[idx].title = title; state.items[idx].description = desc; state.items[idx].text = text; state.items[idx].tags = [...formTags]; state.items[idx].updatedAt = Date.now(); state.items[idx]._autoType = autoDetectedType; state.items[idx]._autoTags = autoSuggestedTags.filter(t => formTags.includes(t)); } showToast('Gespeichert.', 'normal', { duration: 3000 }); } else { state.items.push({ id: genId(), title, description: desc, text, tags: [...formTags], type: autoDetectedType || 'prompt', copyCount: 0, createdAt: Date.now(), updatedAt: Date.now(), _autoType: autoDetectedType, _autoTags: autoSuggestedTags.filter(t => formTags.includes(t)) }); showToast('Erstellt.', 'normal', { duration: 3000 }); } save(); renderAll(); doCloseForm(); }
+function saveItem() { 
+  const title = dom.inputTitle.value.trim(), desc = dom.inputDesc.value.trim(), text = dom.inputText.value.trim(); 
+  if (!title) { dom.inputTitle.focus(); showToast('Bitte Titel eingeben.', 'normal'); return; } 
+  if (!text) { dom.inputText.focus(); showToast('Bitte Inhalt eingeben.', 'normal'); return; } 
+  formTags = cleanTags(formTags); 
+  if (state.editingId) { 
+    const idx = state.items.findIndex(p => p.id === state.editingId); 
+    if (idx !== -1) { state.items[idx].title = title; state.items[idx].description = desc; state.items[idx].text = text; state.items[idx].tags = [...formTags]; state.items[idx].updatedAt = Date.now(); state.items[idx]._autoType = autoDetectedType; state.items[idx]._autoTags = autoSuggestedTags.filter(t => formTags.includes(t)); } 
+    showToast('Gespeichert.', 'normal', { duration: 3000 }); 
+  } else { 
+    state.items.push({ id: genId(), title, description: desc, text, tags: [...formTags], type: autoDetectedType || 'prompt', copyCount: 0, createdAt: Date.now(), updatedAt: Date.now(), _autoType: autoDetectedType, _autoTags: autoSuggestedTags.filter(t => formTags.includes(t)) }); 
+    showToast('Erstellt.', 'normal', { duration: 3000 }); 
+  } 
+  save(); clearDraft(); renderAll(); doCloseForm(); 
+}
 
 function openDetail(id) { const p = state.items.find(x => x.id === id); if (!p) return; state.detailId = id; dom.detailTitle.textContent = p.title; dom.detailText.textContent = p.text; if (p.description) { dom.detailDescWrap.classList.remove('hidden'); dom.detailDesc.textContent = p.description; } else { dom.detailDescWrap.classList.add('hidden'); } const cc = p.copyCount || 0; dom.detailMeta.textContent = `Erstellt: ${new Date(p.createdAt).toLocaleDateString('de-DE', { day: 'numeric', month: 'long', year: 'numeric' })}${cc > 0 ? ' · ' + cc + '× kopiert' : ''}`; let tagsHtml = `<span class="tag type-tag">${esc(p.type === 'agent' ? 'Agent' : 'Prompt')}</span>`; (p.tags || []).forEach(t => { tagsHtml += renderTag(t); }); dom.detailTags.innerHTML = tagsHtml; dom.detailPanel.classList.add('open'); openOverlay(); setTimeout(() => dom.btnCloseDetail.focus(), 300); }
 function closeDetail() { dom.detailPanel.classList.remove('open'); const prev = state.detailId; state.detailId = null; closeOverlay(); if (prev) { const c = dom.promptGrid.querySelector(`[data-id="${prev}"]`); if (c) c.focus(); } }
@@ -1063,7 +1140,19 @@ function duplicateItem(id) { const p = state.items.find(x => x.id === id); if (!
 function downloadJSON(data, filename) { const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }), url = URL.createObjectURL(blob), a = document.createElement('a'); a.href = url; a.download = filename; a.click(); URL.revokeObjectURL(url); }
 function openContextMenu(id, btn) { state.openContextMenuId = id; const r = btn.getBoundingClientRect(); dom.contextMenu.style.top = (r.bottom + scrollY + 4) + 'px'; dom.contextMenu.style.left = Math.min(r.left + scrollX, innerWidth - 180) + 'px'; dom.contextMenu.classList.add('open'); }
 function closeContextMenu() { dom.contextMenu.classList.remove('open'); state.openContextMenuId = null; }
-function showToast(msg, type = 'normal', opts = {}) { const t = document.createElement('div'); t.className = `toast toast-${type}`; const cb = '<button class="toast-close">✕</button>'; let ac = type === 'undo' ? `<div class="toast-actions"><button class="btn btn-sm" data-undo>Rückgängig</button>${cb}</div>` : (type === 'warning' || type === 'full') ? `<div class="toast-actions"><button class="btn btn-sm" data-export-toast>Exportieren</button>${cb}</div>` : cb; t.innerHTML = `<span>${msg}</span>${ac}`; dom.toastContainer.appendChild(t); const dur = type === 'undo' ? 8000 : (type === 'normal' ? (opts.duration || 5000) : 0); if (dur > 0 && type !== 'warning' && type !== 'full') t._to = setTimeout(() => dismiss(t), dur); t.querySelector('.toast-close').addEventListener('click', () => dismiss(t)); const ub = t.querySelector('[data-undo]'); if (ub) ub.addEventListener('click', () => { if (opts.onUndo) opts.onUndo(); dismiss(t); }); const wb = t.querySelector('[data-export-toast]'); if (wb) wb.addEventListener('click', () => { exportAll(); dismiss(t); }); return t; }
+
+function showToast(msg, type = 'normal', opts = {}) { 
+  const t = document.createElement('div'); t.className = `toast toast-${type}`; 
+  const cb = '<button class="toast-close">✕</button>'; 
+  let ac = type === 'undo' ? `<div class="toast-actions"><button class="btn btn-sm" data-undo>Rückgängig</button>${cb}</div>` : (type === 'warning' || type === 'full') ? `<div class="toast-actions"><button class="btn btn-sm" data-export-toast>Exportieren</button>${cb}</div>` : cb; 
+  t.innerHTML = `<span>${msg}</span>${ac}`; dom.toastContainer.appendChild(t); 
+  const dur = type === 'undo' ? 8000 : (type === 'normal' ? (opts.duration || 5000) : 0); 
+  if (dur > 0 && type !== 'warning' && type !== 'full') t._to = setTimeout(() => dismiss(t), dur); 
+  t.querySelector('.toast-close').addEventListener('click', () => dismiss(t)); 
+  const ub = t.querySelector('[data-undo]'); if (ub) ub.addEventListener('click', () => { if (opts.onUndo) opts.onUndo(); dismiss(t); }); 
+  const wb = t.querySelector('[data-export-toast]'); if (wb) wb.addEventListener('click', () => { exportAll(); dismiss(t); }); 
+  return t; 
+}
 function dismiss(t) { if (t._to) clearTimeout(t._to); t.style.transition = 'opacity 0.2s, transform 0.2s'; t.style.opacity = '0'; t.style.transform = 'translateX(100%)'; setTimeout(() => t.remove(), 200); }
 
 document.addEventListener('keydown', e => { 
@@ -1079,82 +1168,96 @@ document.addEventListener('keydown', e => {
   if ((e.metaKey || e.ctrlKey) && e.key === 'k') { e.preventDefault(); dom.searchInput.focus(); dom.searchInput.select(); } 
   if ((e.metaKey || e.ctrlKey) && e.key === 'Enter' && dom.formSidebar.classList.contains('open')) { e.preventDefault(); saveItem(); } 
   if (e.shiftKey && e.key === '?') { e.preventDefault(); dom.shortcutsPanel.classList.toggle('open'); } 
-  // Dark Mode Toggle mit "T"
-  if (e.key.toLowerCase() === 't' && !e.metaKey && !e.ctrlKey && !e.altKey) {
-    // Nur wenn kein Input-Feld fokussiert ist
-    if (!['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName)) {
-      e.preventDefault();
-      toggleTheme();
-    }
-  }
+  if (e.key.toLowerCase() === 't' && !e.metaKey && !e.ctrlKey && !e.altKey) { if (!['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName)) { e.preventDefault(); toggleTheme(); } }
 });
 
 function parseFrontMatter(text) { const match = text.match(/^---\r?\n([\s\S]*?)\r?\n---/); if (!match) return { frontMatter: null, content: text }; const rawFm = match[1]; const content = text.slice(match[0].length).trim(); const fm = {}; rawFm.split('\n').forEach(line => { const colonIdx = line.indexOf(':'); if (colonIdx === -1) return; const key = line.slice(0, colonIdx).trim().toLowerCase(); let value = line.slice(colonIdx + 1).trim(); if (key === 'tags') { value = value.replace(/^\[|\]$/g, ''); fm.tags = value.split(',').map(t => sanitizeTag(t)).map(normalizeTag).filter(Boolean); } else if (key === 'description' || key === 'desc') { fm.description = value; } else fm[key] = value.replace(/^["']|["']$/g, ''); }); return { frontMatter: fm, content }; }
 function parseTextFile(content, filename) { const { frontMatter, content: body } = parseFrontMatter(content); let title = '', text = '', desc = '', tags = []; if (frontMatter) { title = frontMatter.title || filename.replace(/\.(md|markdown|txt|text)$/i, '').replace(/[-_]/g, ' '); desc = frontMatter.description || ''; tags = frontMatter.tags || []; text = body; } else { const lines = content.split('\n'); if (lines[0] && lines[0].startsWith('# ')) { title = lines[0].slice(2).trim(); text = lines.slice(1).join('\n').trim(); } if (!title) { title = filename.replace(/\.(md|markdown|txt|text)$/i, '').replace(/[-_]/g, ' '); text = content.trim(); } } if (!title || !text) return null; return { title, text, description: desc, tags }; }
-function handleImport(e) { const files = e.target.files; if (!files || !files.length) return; let imported = 0; const errors = []; const readFile = (file) => new Promise((resolve) => { const reader = new FileReader(); const ext = file.name.split('.').pop().toLowerCase(); reader.onload = (ev) => { const content = ev.target.result; try { if (ext === 'json') { let data; try { data = JSON.parse(content); } catch { throw new Error('Ungültiges JSON'); } if (!Array.isArray(data)) data = [data]; data.forEach(item => { const title = item.title || item.name || 'Unbenannt'; const desc = item.description || ''; const text = item.text || item.prompt || item.system_prompt || item.instructions || ''; const detectedType = item.type || item._type || detectType(title, text); const finalTags = cleanTags([...(item.tags || []), ...(item._autoTags || suggestTags(title, text, 4))]); if (title && text) { state.items.push({ id: genId(), title, description: desc, text, tags: finalTags, type: detectedType, copyCount: item.copyCount || 0, createdAt: item.createdAt || Date.now(), updatedAt: Date.now(), _autoType: detectedType, _autoTags: finalTags }); imported++; } }); } else if (['md','markdown','txt','text'].includes(ext)) { const parsed = parseTextFile(content, file.name); if (parsed && parsed.title && parsed.text) { const pseudoTitle = parsed.title || parsed.text.split('\n')[0].slice(0, 80); const detectedType = detectType(pseudoTitle, parsed.text); const finalTags = cleanTags([...(parsed.tags || []), ...suggestTags(pseudoTitle, parsed.text, 5)]); state.items.push({ id: genId(), title: parsed.title, description: parsed.description || '', text: parsed.text, tags: finalTags, type: detectedType, copyCount: 0, createdAt: Date.now(), updatedAt: Date.now(), _autoType: detectedType, _autoTags: finalTags }); imported++; } else errors.push(`${file.name}: Keine gültigen Inhalte`); } else errors.push(`${file.name}: Format nicht unterstützt`); } catch (err) { errors.push(`${file.name}: ${err.message}`); } resolve(); }; reader.onerror = () => { errors.push(`${file.name}: Lesefehler`); resolve(); }; reader.readAsText(file); }); Promise.all(Array.from(files).map(readFile)).then(() => { if (imported > 0) { save(); renderAll(); showToast(`${imported} Eintrag${imported!==1?'e':''} importiert (auto-klassifiziert).`, 'normal', { duration: 4000 }); } else showToast('Keine gültigen Einträge.' + (errors.length ? ' ' + errors.join(', ') : ''), 'warning'); e.target.value = ''; }); }
+
+function handleImport(e) { 
+  const files = e.target.files; if (!files || !files.length) return; 
+  let imported = 0; const errors = []; 
+  const readFile = (file) => new Promise((resolve) => { 
+    const reader = new FileReader(); const ext = file.name.split('.').pop().toLowerCase(); 
+    reader.onload = (ev) => { 
+      const content = ev.target.result; 
+      try { 
+        if (ext === 'json') { 
+          let data; try { data = JSON.parse(content); } catch { throw new Error('Ungültiges JSON'); } 
+          if (!Array.isArray(data)) data = [data]; 
+          data.forEach(item => { 
+            const title = item.title || item.name || 'Unbenannt'; const desc = item.description || ''; const text = item.text || item.prompt || item.system_prompt || item.instructions || ''; 
+            const detectedType = item.type || item._type || detectType(title, text); 
+            const finalTags = cleanTags([...(item.tags || []), ...(item._autoTags || suggestTags(title, text, 4))]); 
+            if (title && text) { state.items.push({ id: genId(), title, description: desc, text, tags: finalTags, type: detectedType, copyCount: item.copyCount || 0, createdAt: item.createdAt || Date.now(), updatedAt: Date.now(), _autoType: detectedType, _autoTags: finalTags }); imported++; } 
+          }); 
+        } else if (['md','markdown','txt','text'].includes(ext)) { 
+          const parsed = parseTextFile(content, file.name); 
+          if (parsed && parsed.title && parsed.text) { 
+            const pseudoTitle = parsed.title || parsed.text.split('\n')[0].slice(0, 80); 
+            const detectedType = detectType(pseudoTitle, parsed.text); 
+            const finalTags = cleanTags([...(parsed.tags || []), ...suggestTags(pseudoTitle, parsed.text, 5)]); 
+            state.items.push({ id: genId(), title: parsed.title, description: parsed.description || '', text: parsed.text, tags: finalTags, type: detectedType, copyCount: 0, createdAt: Date.now(), updatedAt: Date.now(), _autoType: detectedType, _autoTags: finalTags }); imported++; 
+          } else errors.push(`${file.name}: Keine gültigen Inhalte`); 
+        } else errors.push(`${file.name}: Format nicht unterstützt`); 
+      } catch (err) { errors.push(`${file.name}: ${err.message}`); } 
+      resolve(); 
+    }; 
+    reader.onerror = () => { errors.push(`${file.name}: Lesefehler`); resolve(); }; 
+    reader.readAsText(file); 
+  }); 
+  Promise.all(Array.from(files).map(readFile)).then(() => { 
+    if (imported > 0 && errors.length === 0) { save(); renderAll(); showToast(`${imported} Eintrag${imported!==1?'e':''} importiert.`, 'normal', { duration: 4000 }); } 
+    else if (imported > 0 && errors.length > 0) { 
+      save(); renderAll(); 
+      const toast = showToast(`${imported} von ${files.length} importiert.`, 'warning'); 
+      const details = document.createElement('div'); details.style.cssText = 'margin-top:8px;font-size:12px;color:var(--color-warning-text);max-height:100px;overflow-y:auto;'; details.innerHTML = `<strong>Übersprungen:</strong><br>${errors.map(e => `• ${e}`).join('<br>')}`; details.style.display = 'none'; toast.appendChild(details); 
+      const toggle = document.createElement('button'); toggle.textContent = 'Details ▾'; toggle.style.cssText = 'background:none;border:none;color:inherit;cursor:pointer;font-size:12px;text-decoration:underline;padding:0;'; toggle.onclick = () => { details.style.display = details.style.display === 'none' ? 'block' : 'none'; toggle.textContent = details.style.display === 'none' ? 'Details ▾' : 'Details ▴'; }; toast.querySelector('.toast-actions').prepend(toggle); 
+    } else if (imported === 0 && errors.length > 0) { 
+      const toast = showToast('Keine gültigen Einträge importiert.', 'warning'); 
+      const details = document.createElement('div'); details.style.cssText = 'margin-top:8px;font-size:12px;color:var(--color-warning-text);max-height:100px;overflow-y:auto;display:none;'; details.innerHTML = errors.map(e => `• ${e}`).join('<br>'); toast.appendChild(details); 
+      const toggle = document.createElement('button'); toggle.textContent = 'Fehler anzeigen ▾'; toggle.style.cssText = 'background:none;border:none;color:inherit;cursor:pointer;font-size:12px;text-decoration:underline;padding:0;'; toggle.onclick = () => { details.style.display = details.style.display === 'none' ? 'block' : 'none'; toggle.textContent = details.style.display === 'none' ? 'Fehler anzeigen ▾' : 'Fehler ausblenden ▴'; }; (toast.querySelector('.toast-actions') || toast).appendChild(toggle); 
+    } 
+    e.target.value = ''; 
+  }); 
+}
 
 function init() { 
-  initTheme(); // ← Theme initialisieren
-  dom.skeletonGrid.style.display = 'grid'; 
+  initTheme(); dom.skeletonGrid.style.display = 'grid'; 
   setTimeout(() => { load(); dom.skeletonGrid.style.display = 'none'; renderAll(); }, 400); 
   dom.searchInput.addEventListener('input', e => { state.searchQuery = e.target.value; renderAll(); }); 
   dom.sortSelect.addEventListener('change', e => { state.sortBy = e.target.value; renderAll(); }); 
   dom.filterTags.addEventListener('click', e => { const b = e.target.closest('.filter-tag'); if (b) { state.activeFilter = b.dataset.tag; renderAll(); } }); 
-  dom.btnNew.addEventListener('click', () => openFormSidebar()); 
-  dom.btnExportAll.addEventListener('click', exportAll);
-  dom.btnEmptyNew.addEventListener('click', () => openFormSidebar()); 
+  dom.btnNew.addEventListener('click', () => openFormSidebar()); dom.btnExportAll.addEventListener('click', exportAll); dom.btnEmptyNew.addEventListener('click', () => openFormSidebar()); 
   dom.inputText.addEventListener('input', () => { state.formDirty = true; updateCharCount(); updateAutoDetection(); }); 
-  dom.inputTitle.addEventListener('input', () => { state.formDirty = true; updateAutoDetection(); }); 
-  dom.inputDesc.addEventListener('input', () => { state.formDirty = true; }); 
-  dom.btnSave.addEventListener('click', saveItem); 
-  dom.btnCancelForm.addEventListener('click', closeFormSidebar); 
-  dom.btnCloseForm.addEventListener('click', closeFormSidebar); 
-  dom.tagInputField.addEventListener('keydown', e => { 
-    if (e.key === 'Escape') { e.stopPropagation(); dom.tagInputField.value = ''; dom.tagSuggestions.innerHTML = ''; return; }
-    if (e.key === 'Enter' || e.key === ',') { e.preventDefault(); const v = dom.tagInputField.value.trim(); if (v) addFormTag(v); dom.tagInputField.value = ''; dom.tagSuggestions.innerHTML = ''; return; } 
-    if (e.key === 'Backspace' && !dom.tagInputField.value && formTags.length) removeFormTag(formTags.length - 1); 
-  }); 
-  dom.tagInputField.addEventListener('input', () => updateFormSuggestions()); 
-  dom.tagInputWrap.addEventListener('click', () => dom.tagInputField.focus()); 
+  dom.inputTitle.addEventListener('input', () => { state.formDirty = true; updateAutoDetection(); }); dom.inputDesc.addEventListener('input', () => { state.formDirty = true; }); 
+  dom.btnSave.addEventListener('click', saveItem); dom.btnCancelForm.addEventListener('click', closeFormSidebar); dom.btnCloseForm.addEventListener('click', closeFormSidebar); 
+  dom.tagInputField.addEventListener('keydown', e => { if (e.key === 'Escape') { e.stopPropagation(); dom.tagInputField.value = ''; dom.tagSuggestions.innerHTML = ''; return; } if (e.key === 'Enter' || e.key === ',') { e.preventDefault(); const v = dom.tagInputField.value.trim(); if (v) addFormTag(v); dom.tagInputField.value = ''; dom.tagSuggestions.innerHTML = ''; return; } if (e.key === 'Backspace' && !dom.tagInputField.value && formTags.length) removeFormTag(formTags.length - 1); }); 
+  dom.tagInputField.addEventListener('input', () => updateFormSuggestions()); dom.tagInputWrap.addEventListener('click', () => dom.tagInputField.focus()); 
   dom.tagInputWrap.addEventListener('click', e => { const r = e.target.closest('.tag-remove'); if (r) removeFormTag(parseInt(r.dataset.tagIndex)); }); 
+  
   dom.promptGrid.addEventListener('click', e => {
-    const cb = e.target.closest('.card-checkbox'); 
-    if (cb) { cb.checked ? state.selectedIds.add(cb.dataset.id) : state.selectedIds.delete(cb.dataset.id); renderAll(); renderBulk(); return; }
-    const btn = e.target.closest('[data-action]'); 
-    if (!btn) return; 
-    const id = btn.dataset.id, act = btn.dataset.action; 
-    if (act === 'detail') openDetail(id); 
-    else if (act === 'edit') openFormSidebar(id);
-    else if (act === 'copy') copyItem(id); 
-    else if (act === 'export-item') exportItem(id);
-    else if (act === 'context') openContextMenu(id, btn);
+    const cb = e.target.closest('.card-checkbox'); if (cb) { cb.checked ? state.selectedIds.add(cb.dataset.id) : state.selectedIds.delete(cb.dataset.id); renderAll(); renderBulk(); return; }
+    if (state.selectedIds.size > 0) { const card = e.target.closest('.card'); if (card && !e.target.closest('[data-action]')) { const id = card.dataset.id; if (state.selectedIds.has(id)) state.selectedIds.delete(id); else state.selectedIds.add(id); renderAll(); renderBulk(); return; } }
+    const btn = e.target.closest('[data-action]'); if (!btn) return; const id = btn.dataset.id, act = btn.dataset.action; 
+    if (act === 'detail') openDetail(id); else if (act === 'edit') openFormSidebar(id); else if (act === 'copy') copyItem(id); else if (act === 'export-item') exportItem(id); else if (act === 'context') openContextMenu(id, btn);
   }); 
   dom.promptGrid.addEventListener('keydown', e => { if (e.key === ' ' && !e.target.classList.contains('card-checkbox')) { e.preventDefault(); const c = e.target.closest('.card'); if (c && state.selectedIds.size > 0) { const cb = c.querySelector('.card-checkbox'); if (cb) { cb.checked = !cb.checked; cb.checked ? state.selectedIds.add(c.dataset.id) : state.selectedIds.delete(c.dataset.id); renderAll(); renderBulk(); } } else if (c) openDetail(c.dataset.id); } }); 
   dom.contextMenu.addEventListener('click', e => { const i = e.target.closest('.context-menu-item'); if (!i || !state.openContextMenuId) return; const a = i.dataset.action; if (a === 'duplicate') duplicateItem(state.openContextMenuId); else if (a === 'delete') deleteItem(state.openContextMenuId); closeContextMenu(); }); 
   document.addEventListener('click', e => { if (!e.target.closest('.context-menu') && !e.target.closest('[data-action="context"]')) closeContextMenu(); }); 
-  dom.bulkExport.addEventListener('click', exportAll); 
-  dom.bulkDelete.addEventListener('click', deleteBulk); 
-  dom.bulkClear.addEventListener('click', () => { state.selectedIds.clear(); renderAll(); }); 
-  dom.btnCloseDetail.addEventListener('click', closeDetail); 
-  dom.btnDetailCopy.addEventListener('click', () => { if (state.detailId) copyItem(state.detailId); }); 
+  dom.bulkExport.addEventListener('click', exportAll); dom.bulkDelete.addEventListener('click', deleteBulk); dom.bulkClear.addEventListener('click', () => { state.selectedIds.clear(); renderAll(); }); 
+  dom.btnCloseDetail.addEventListener('click', closeDetail); dom.btnDetailCopy.addEventListener('click', () => { if (state.detailId) copyItem(state.detailId); }); 
   dom.btnDetailEdit.addEventListener('click', () => { if (state.detailId) { closeDetail(); setTimeout(() => openFormSidebar(state.detailId), 300); } }); 
   dom.btnDetailDelete.addEventListener('click', () => { if (state.detailId) { const id = state.detailId; closeDetail(); setTimeout(() => deleteItem(id), 300); } }); 
   dom.overlay.addEventListener('click', () => { if (dom.formSidebar.classList.contains('open')) closeFormSidebar(); if (dom.detailPanel.classList.contains('open')) closeDetail(); }); 
-  dom.btnKeepEditing.addEventListener('click', () => dom.unsavedDialog.classList.remove('open')); 
-  dom.btnDiscard.addEventListener('click', () => { dom.unsavedDialog.classList.remove('open'); doCloseForm(); }); 
+  dom.btnKeepEditing.addEventListener('click', () => dom.unsavedDialog.classList.remove('open')); dom.btnDiscard.addEventListener('click', () => { dom.unsavedDialog.classList.remove('open'); doCloseForm(); }); 
   dom.btnResetFilters.addEventListener('click', () => { state.searchQuery = ''; state.activeFilter = 'popular'; dom.searchInput.value = ''; renderAll(); }); 
-  dom.btnShortcuts.addEventListener('click', () => dom.shortcutsPanel.classList.add('open')); 
-  dom.btnCloseShortcuts.addEventListener('click', () => dom.shortcutsPanel.classList.remove('open')); 
+  dom.btnShortcuts.addEventListener('click', () => dom.shortcutsPanel.classList.add('open')); dom.btnCloseShortcuts.addEventListener('click', () => dom.shortcutsPanel.classList.remove('open')); 
   dom.shortcutsPanel.addEventListener('click', e => { if (e.target === dom.shortcutsPanel) dom.shortcutsPanel.classList.remove('open'); }); 
-  dom.btnImport.addEventListener('click', () => dom.importInput.click()); 
-  dom.importInput.addEventListener('change', handleImport); 
-  
-  // OLLAMA EVENT LISTENERS
-  dom.btnOllamaOptimize.addEventListener('click', optimizeWithOllama);
-  dom.btnApplyOllama.addEventListener('click', applyOllamaResults);
-  
-  // THEME TOGGLE
+  dom.btnImport.addEventListener('click', () => dom.importInput.click()); dom.importInput.addEventListener('change', handleImport); 
+  dom.btnOllamaOptimize.addEventListener('click', optimizeWithOllama); dom.btnApplyOllama.addEventListener('click', applyOllamaResults); 
   dom.themeToggle.addEventListener('click', toggleTheme);
+  dom.ollamaToggle.addEventListener('click', async () => { const body = dom.ollamaBody; if (body.classList.contains('collapsed')) { if (ollamaState === OLLAMA_STATES.NOT_CONFIGURED) await checkOllamaConnection(); else body.classList.remove('collapsed'); } else body.classList.add('collapsed'); });
 }
 init();
 </script>
