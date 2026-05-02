@@ -690,12 +690,14 @@ function handleImport(event: Event) {
   border: 1px solid;
   transition: all 0.15s;
   white-space: nowrap;
+  margin-bottom: 4px;
 }
 
 .tag.type-tag {
   background: #f3f4f6;
   border-color: #d1d5db;
   color: #4b5563;
+  margin-right: 4px;
 }
 
 [data-theme='dark'] .tag.type-tag {
