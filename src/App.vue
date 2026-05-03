@@ -1,7 +1,11 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
+import { onMounted, computed } from 'vue';
 import type { PromptItem, SortOption } from './types';
 import promptsData from './data/prompts.json';
+
+// Composables
+import { usePrompts, useFilters, useTheme, useUI } from './composables';
+import { downloadBlob, copyToClipboard, sanitizeFilename } from './utils/helpers';
 
 // Components
 import NavBar from './components/NavBar.vue';
@@ -17,105 +21,22 @@ import PromptDetail from './components/PromptDetail.vue';
 import Overlay from './components/Overlay.vue';
 import ThemeToggle from './components/ThemeToggle.vue';
 
-// State
-const items = ref<PromptItem[]>([]);
-const searchQuery = ref('');
-const activeFilter = ref<string>('all');
-const sortBy = ref<SortOption>('newest');
-const selectedIds = ref<Set<string>>(new Set());
-const isDark = ref(false);
-
-// UI State
-const isFormOpen = ref(false);
-const isDetailOpen = ref(false);
-const editingId = ref<string | null>(null);
-const detailId = ref<string | null>(null);
+// Composables initialisieren
+const { items, loadInitialData, addPrompt, updatePrompt, deletePrompt, incrementCopyCount, bulkDelete } = usePrompts();
+const { searchQuery, activeFilter, sortBy, selectedIds, allTags, itemCounts, filteredItems, toggleSelection, clearSelection, resetFilters } = useFilters(items);
+const { isDark, initializeTheme, toggleTheme } = useTheme();
+const { isFormOpen, isDetailOpen, editingId, detailId, openEditForm, openCreateForm, openDetail, closeAll } = useUI();
 
 // Load initial data
 onMounted(() => {
   // Use static JSON data as initial data source
-  items.value = promptsData as PromptItem[];
+  loadInitialData(promptsData as PromptItem[]);
   
   // Initialize theme
-  const savedTheme = localStorage.getItem('promptlib_theme');
-  if (savedTheme) {
-    isDark.value = savedTheme === 'dark';
-    document.documentElement.setAttribute('data-theme', savedTheme);
-  } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
-    isDark.value = true;
-    document.documentElement.setAttribute('data-theme', 'dark');
-  }
+  initializeTheme();
 });
 
 // Computed properties
-const allTags = computed(() => {
-  const tags = new Set<string>();
-  items.value.forEach((item) => {
-    item.tags.forEach((tag) => tags.add(tag));
-  });
-  return [...tags].sort();
-});
-
-const itemCounts = computed(() => {
-  const threshold = getPopularThreshold();
-  return {
-    popular: items.value.filter((item) => (item.copyCount || 0) >= threshold && threshold > 0).length,
-    all: items.value.length,
-    agent: items.value.filter((item) => item.type === 'agent').length,
-    prompt: items.value.filter((item) => item.type === 'prompt').length,
-    byTag: {} as Record<string, number>
-  };
-});
-
-const filteredItems = computed(() => {
-  let result = [...items.value];
-
-  // Search filter
-  if (searchQuery.value) {
-    const query = searchQuery.value.toLowerCase();
-    result = result.filter(
-      (item) =>
-        item.title.toLowerCase().includes(query) ||
-        item.description.toLowerCase().includes(query) ||
-        item.text.toLowerCase().includes(query) ||
-        item.tags.some((tag) => tag.includes(query))
-    );
-  }
-
-  // Type/Tag filter
-  if (activeFilter.value === 'agent') {
-    result = result.filter((item) => item.type === 'agent');
-  } else if (activeFilter.value === 'prompt') {
-    result = result.filter((item) => item.type === 'prompt');
-  } else if (activeFilter.value === 'popular') {
-    const threshold = getPopularThreshold();
-    result = result.filter((item) => (item.copyCount || 0) >= threshold && threshold > 0);
-  } else if (activeFilter.value !== 'all') {
-    result = result.filter((item) => item.tags.includes(activeFilter.value));
-  }
-
-  // Sorting
-  switch (sortBy.value) {
-    case 'newest':
-      result.sort((a, b) => b.createdAt - a.createdAt);
-      break;
-    case 'oldest':
-      result.sort((a, b) => a.createdAt - b.createdAt);
-      break;
-    case 'alpha':
-      result.sort((a, b) => a.title.localeCompare(b.title));
-      break;
-    case 'alpha-desc':
-      result.sort((a, b) => b.title.localeCompare(a.title));
-      break;
-    case 'popular':
-      result.sort((a, b) => (b.copyCount || 0) - (a.copyCount || 0));
-      break;
-  }
-
-  return result;
-});
-
 const currentItem = computed(() => {
   if (editingId.value) {
     return items.value.find((item) => item.id === editingId.value) || null;
@@ -130,25 +51,7 @@ const currentDetailItem = computed(() => {
   return null;
 });
 
-// Helper functions
-function getPopularThreshold(): number {
-  if (items.value.length < 3) return 1;
-  const counts = items.value
-    .map((item) => item.copyCount || 0)
-    .filter((c) => c > 0)
-    .sort((a, b) => b - a);
-  if (counts.length === 0) return 0;
-  return Math.max(2, counts[Math.max(0, Math.floor(counts.length * 0.3))] || 1);
-}
-
 // Event handlers
-function toggleTheme() {
-  isDark.value = !isDark.value;
-  const theme = isDark.value ? 'dark' : 'light';
-  document.documentElement.setAttribute('data-theme', theme);
-  localStorage.setItem('promptlib_theme', theme);
-}
-
 function handleFilterChange(tag: string) {
   activeFilter.value = tag;
 }
@@ -157,30 +60,12 @@ function handleSortChange(option: SortOption) {
   sortBy.value = option;
 }
 
-function handleSelect(id: string) {
-  if (selectedIds.value.has(id)) {
-    selectedIds.value.delete(id);
-  } else {
-    selectedIds.value.add(id);
-  }
-}
-
-function handleDetail(id: string) {
-  detailId.value = id;
-  isDetailOpen.value = true;
-}
-
-function handleEdit(id: string) {
-  editingId.value = id;
-  isFormOpen.value = true;
-}
-
 function handleCopy(id: string) {
   const item = items.value.find((i) => i.id === id);
   if (!item) return;
 
-  navigator.clipboard.writeText(item.text).then(() => {
-    item.copyCount = (item.copyCount || 0) + 1;
+  copyToClipboard(item.text).then(() => {
+    incrementCopyCount(id);
     alert('Kopiert!');
   });
 }
@@ -189,75 +74,34 @@ function handleExport(id: string) {
   const item = items.value.find((i) => i.id === id);
   if (!item) return;
 
-  const blob = new Blob([JSON.stringify([item], null, 2)], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `${item.title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.json`;
-  a.click();
-  URL.revokeObjectURL(url);
+  const filename = `${sanitizeFilename(item.title)}.json`;
+  downloadBlob([item], filename);
 }
 
 function handleSave(data: { title: string; description: string; text: string; tags: string[] }) {
   if (editingId.value) {
     // Update existing item
-    const index = items.value.findIndex((item) => item.id === editingId.value);
-    if (index !== -1) {
-      items.value[index] = {
-        ...items.value[index],
-        ...data,
-        updatedAt: Date.now()
-      };
-    }
+    updatePrompt(editingId.value, data);
   } else {
     // Create new item
-    const newItem: PromptItem = {
-      id: Date.now().toString(36) + Math.random().toString(36).slice(2, 7),
+    addPrompt({
       ...data,
-      type: 'prompt',
-      copyCount: 0,
-      createdAt: Date.now(),
-      updatedAt: Date.now()
-    };
-    items.value.unshift(newItem);
+      type: 'prompt'
+    });
   }
 
   isFormOpen.value = false;
   editingId.value = null;
 }
 
-function handleDelete(id: string) {
-  const index = items.value.findIndex((item) => item.id === id);
-  if (index !== -1) {
-    items.value.splice(index, 1);
-    isDetailOpen.value = false;
-    detailId.value = null;
-  }
-}
-
 function handleBulkExport() {
-  // Export all items
-  const blob = new Blob([JSON.stringify(items.value, null, 2)], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `promptlib-export-${new Date().toISOString().slice(0, 10)}.json`;
-  a.click();
-  URL.revokeObjectURL(url);
+  const filename = `promptlib-export-${new Date().toISOString().slice(0, 10)}.json`;
+  downloadBlob(items.value, filename);
 }
 
 function handleBulkDelete() {
-  items.value = items.value.filter((item) => !selectedIds.value.has(item.id));
-  selectedIds.value.clear();
-}
-
-function handleClearSelection() {
-  selectedIds.value.clear();
-}
-
-function handleCreateNew() {
-  editingId.value = null;
-  isFormOpen.value = true;
+  bulkDelete(selectedIds.value);
+  clearSelection();
 }
 
 function handleImport(event: Event) {
@@ -275,18 +119,13 @@ function handleImport(event: Event) {
       let addedCount = 0;
       for (const item of dataArray) {
         if (item.title && item.text) {
-          const newItem: PromptItem = {
-            id: item.id || Date.now().toString(36) + Math.random().toString(36).slice(2, 7),
+          addPrompt({
             title: item.title,
             description: item.description || '',
             text: item.text,
             tags: item.tags || [],
-            type: item.type || 'prompt',
-            copyCount: item.copyCount || 0,
-            createdAt: item.createdAt || Date.now(),
-            updatedAt: Date.now()
-          };
-          items.value.unshift(newItem);
+            type: item.type || 'prompt'
+          });
           addedCount++;
         }
       }
@@ -377,7 +216,7 @@ function handleImport(event: Event) {
               </svg>
               Alle exportieren
             </button>
-            <button class="btn btn-primary" @click="handleCreateNew">
+            <button class="btn btn-primary" @click="openCreateForm">
               <svg
                 width="16"
                 height="16"
@@ -427,7 +266,7 @@ function handleImport(event: Event) {
         :count="selectedIds.size"
         @export="handleBulkExport"
         @delete="handleBulkDelete"
-        @clear="handleClearSelection"
+        @clear="clearSelection"
       />
 
       <!-- Prompt Grid -->
@@ -437,8 +276,8 @@ function handleImport(event: Event) {
       >
         <EmptyState
           message="Deine Bibliothek ist leer."
-          @create-new="handleCreateNew"
-          @reset-filters="() => { activeFilter = 'all'; searchQuery = ''; }"
+          @create-new="openCreateForm"
+          @reset-filters="resetFilters"
         />
       </div>
       <div
@@ -448,8 +287,8 @@ function handleImport(event: Event) {
         <EmptyState
           message="Keine Einträge gefunden."
           :search-term="searchQuery || activeFilter"
-          @reset-filters="() => { activeFilter = 'all'; searchQuery = ''; }"
-          @create-new="handleCreateNew"
+          @reset-filters="resetFilters"
+          @create-new="openCreateForm"
         />
       </div>
       <div
@@ -461,9 +300,9 @@ function handleImport(event: Event) {
           :key="item.id"
           :item="item"
           :is-selected="selectedIds.has(item.id)"
-          @select="handleSelect"
-          @detail="handleDetail"
-          @edit="handleEdit"
+          @select="toggleSelection"
+          @detail="openDetail"
+          @edit="openEditForm"
           @copy="handleCopy"
           @export="handleExport"
           @context-menu="() => {}"
@@ -484,41 +323,24 @@ function handleImport(event: Event) {
     <!-- Overlays and Sidebars -->
     <Overlay
       :is-open="isFormOpen || isDetailOpen"
-      @close="
-        () => {
-          isFormOpen = false;
-          isDetailOpen = false;
-          editingId = null;
-          detailId = null;
-        }
-      "
+      @close="closeAll"
     />
 
     <PromptForm
       :is-open="isFormOpen"
       :editing-id="editingId"
       :item="currentItem"
-      @close="
-        () => {
-          isFormOpen = false;
-          editingId = null;
-        }
-      "
+      @close="() => { isFormOpen = false; editingId = null; }"
       @save="handleSave"
     />
 
     <PromptDetail
       :is-open="isDetailOpen"
       :item="currentDetailItem"
-      @close="
-        () => {
-          isDetailOpen = false;
-          detailId = null;
-        }
-      "
+      @close="() => { isDetailOpen = false; detailId = null; }"
       @copy="handleCopy"
-      @edit="handleEdit"
-      @delete="handleDelete"
+      @edit="openEditForm"
+      @delete="deletePrompt"
     />
   </div>
 </template>
